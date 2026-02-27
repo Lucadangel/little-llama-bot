@@ -1,58 +1,64 @@
-import React, { useState } from 'react';
-import ProductCarousel from '../components/ProductCarousel';
-import products from '../lib/products/products.json';
+import React, { useEffect, useState } from 'react';
+import { ProductCarousel } from './ProductCarousel';
+import products from '../products.json';
 
 const Chatbot = () => {
-  const [messages, setMessages] = useState([{ text: 'Welcome! How can I assist you today?', type: 'bot' }]);
-  const [userInput, setUserInput] = useState('');
+    const [messages, setMessages] = useState([]);
+    const [foundProducts, setFoundProducts] = useState([]);
 
-  const handleUserInput = (e) => {
-    setUserInput(e.target.value);
-  };
+    useEffect(() => {
+        const handleUserRequest = (userInput) => {
+            const lowerCaseInput = userInput.toLowerCase();
+            // Check for clothing requests or specific products
+            if (lowerCaseInput.includes('clothes') || lowerCaseInput.includes('shirt') || lowerCaseInput.includes('pants')) {
+                const filteredProducts = products.filter(product => 
+                    product.category === 'clothes' || 
+                    product.name.toLowerCase().includes(lowerCaseInput)
+                );
+                setFoundProducts(filteredProducts);
+                setMessages(prev => [...prev, { text: 'Here are some products I found:', sender: 'bot' }]);
+            }
+        };
 
-  const handleSendMessage = () => {
-    const userMessage = { text: userInput, type: 'user' };
-    setMessages([...messages, userMessage]);
-    setUserInput('');
+        // Example input handler (you can replace this with actual user input handling)
+        handleUserRequest('I am looking for clothes');
+    }, []);
 
-    // Intent parsing logic here (basic keyword matching)
-    const keywords = ['vest', 'baby', 'shoes', 'blanket'];
-    let foundProducts = [];
-
-    keywords.forEach((keyword) => {
-      if (userInput.toLowerCase().includes(keyword)) {
-        foundProducts = foundProducts.concat(products.filter(product => product.name.toLowerCase().includes(keyword)));
-      }
-    });
-
-    if (foundProducts.length > 0) {
-      const productMessage = { text: 'Here are some products you might like:', type: 'bot' };
-      setMessages(prev => [...prev, productMessage]);
-    } else {
-      const helpMessage = { text: 'I am here to help you find products based on your questions. Please ask anything!', type: 'bot' };
-      setMessages(prev => [...prev, helpMessage]);
-    }
-  };
-
-  return (
-    <div>
-      <div className="chat-window">
-        {messages.map((msg, index) => (
-          <div key={index} className={msg.type === 'bot' ? 'bot-message' : 'user-message'}>
-            {msg.text}
-          </div>
-        ))}
-      </div>
-      <input
-        type="text"
-        value={userInput}
-        onChange={handleUserInput}
-        placeholder="Type your question..."
-      />
-      <button onClick={handleSendMessage}>Send</button>
-      {foundProducts.length > 0 && <ProductCarousel products={foundProducts} />}
-    </div>
-  );
+    return (
+        <div className="chat-container">
+            {messages.map((message, index) => (
+                <div key={index} className={`chat-message ${message.sender}`}>{message.text}</div>
+            ))}
+            {/* Render ProductCarousel if foundProducts is not empty */}
+            {foundProducts.length > 0 && <ProductCarousel products={foundProducts} />}
+        </div>
+    );
 };
 
 export default Chatbot;
+
+/* CSS Styling should be added separately for the bubble messages and responsive layout */
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+    max-width: 600px;
+}
+
+.chat-message {
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px;
+    max-width: 80%;
+}
+
+.chat-message.bot {
+    background-color: #e4f0f6;
+    align-self: flex-start;
+}
+
+.chat-message.user {
+    background-color: #d1ffd1;
+    align-self: flex-end;
+}
