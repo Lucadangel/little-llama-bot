@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local product catalog (not committed – provide locally)
+# local product catalog (not committed)
 src/lib/products.json

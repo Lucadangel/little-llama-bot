@@ -1,9 +1,5 @@
-import { readFileSync } from "fs";
+import { readFile } from "fs/promises";
 import { join } from "path";
-
-// ---------------------------------------------------------------------------
-// Types for the Shopify products.json export format
-// ---------------------------------------------------------------------------
 
 interface ProductVariant {
   price?: string;
@@ -13,110 +9,81 @@ interface ProductImage {
   src?: string;
 }
 
-interface ShopifyProduct {
+interface Product {
   title?: string;
   handle?: string;
-  tags?: string[] | string;
-  vendor?: string;
-  product_type?: string;
+  tags?: string[];
   variants?: ProductVariant[];
   images?: ProductImage[];
+  vendor?: string;
+  product_type?: string;
 }
 
-interface ProductsFile {
-  products: ShopifyProduct[];
+interface ProductCatalog {
+  products: Product[];
 }
 
 export interface ProductResult {
   title: string;
   handle: string;
-  price: string | null;
-  image: string | null;
+  price?: string;
+  image?: string;
   score: number;
 }
 
-// ---------------------------------------------------------------------------
-// Lazy-load the catalog once per process lifetime
-// ---------------------------------------------------------------------------
+const CATALOG_PATH = join(process.cwd(), "src", "lib", "products.json");
 
-let catalog: ShopifyProduct[] | null = null;
-let catalogMissing = false;
-
-function getCatalog(): ShopifyProduct[] | null {
-  if (catalogMissing) return null;
-  if (catalog !== null) return catalog;
-
-  try {
-    const raw = readFileSync(
-      join(process.cwd(), "src", "lib", "products.json"),
-      "utf-8"
-    );
-    const parsed = JSON.parse(raw) as ProductsFile;
-    catalog = Array.isArray(parsed.products) ? parsed.products : [];
-  } catch {
-    catalogMissing = true;
-    return null;
-  }
-
-  return catalog;
+function containsWord(text: string, word: string): boolean {
+  return new RegExp(`\\b${word}\\b`).test(text);
 }
 
-// ---------------------------------------------------------------------------
-// Search
-// ---------------------------------------------------------------------------
-
-function normalizeTags(tags: string[] | string | undefined): string[] {
-  if (!tags) return [];
-  if (Array.isArray(tags)) return tags.map((t) => t.toLowerCase());
-  return tags
-    .split(",")
-    .map((t) => t.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function scoreProduct(product: ShopifyProduct, terms: string[]): number {
-  const title = (product.title ?? "").toLowerCase();
-  const vendor = (product.vendor ?? "").toLowerCase();
-  const productType = (product.product_type ?? "").toLowerCase();
-  const tags = normalizeTags(product.tags);
-
+function scoreProduct(product: Product, query: string): number {
+  const q = query.toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
   let score = 0;
-  for (const term of terms) {
-    if (title.includes(term)) score += 10;
-    if (tags.some((tag) => tag.includes(term))) score += 5;
-    if (vendor.includes(term) || productType.includes(term)) score += 2;
+
+  const title = (product.title ?? "").toLowerCase();
+  const productType = (product.product_type ?? "").toLowerCase();
+  const vendor = (product.vendor ?? "").toLowerCase();
+  const tags = (product.tags ?? []).map((t) => t.toLowerCase());
+
+  for (const word of words) {
+    if (containsWord(title, word)) score += 10;
+    if (tags.some((tag) => containsWord(tag, word))) score += 5;
+    if (containsWord(productType, word)) score += 3;
+    if (containsWord(vendor, word)) score += 2;
   }
+
   return score;
 }
 
-export function searchProducts(
+export async function searchProducts(
   query: string,
   limit = 5
-): { results: ProductResult[]; catalogMissing: boolean } {
-  const products = getCatalog();
+): Promise<ProductResult[] | null> {
+  let catalog: ProductCatalog;
 
-  if (products === null) {
-    return { results: [], catalogMissing: true };
+  try {
+    const raw = await readFile(CATALOG_PATH, "utf-8");
+    catalog = JSON.parse(raw) as ProductCatalog;
+  } catch {
+    return null;
   }
 
-  const terms = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((t) => t.length > 1);
+  const products = catalog.products ?? [];
 
   const scored = products
-    .map((p) => ({ product: p, score: scoreProduct(p, terms) }))
-    .filter(({ score }) => score > 0)
+    .filter((product) => product.title && product.handle)
+    .map((product) => ({
+      title: product.title ?? "",
+      handle: product.handle ?? "",
+      price: product.variants?.[0]?.price,
+      image: product.images?.[0]?.src,
+      score: scoreProduct(product, query),
+    }))
+    .filter((p) => p.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, Math.min(limit, 6));
+    .slice(0, limit);
 
-  const results: ProductResult[] = scored.map(({ product, score }) => ({
-    title: product.title ?? "",
-    handle: product.handle ?? "",
-    price: product.variants?.[0]?.price ?? null,
-    image: product.images?.[0]?.src ?? null,
-    score,
-  }));
-
-  return { results, catalogMissing: false };
+  return scored;
 }
