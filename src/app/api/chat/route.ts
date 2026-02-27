@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { searchProducts } from "@/lib/products-search";
+
+const PRODUCT_KEYWORDS = [
+  "alpaca", "silk", "wool", "cashmere", "baby", "kids",
+  "price", "recommend", "cardigan", "onesie", "hat", "shoes",
+  "find", "looking for", "show me", "buy", "shop", "product",
+  "sweater", "jacket", "pants", "dress", "top", "blanket",
+];
 
 // Cache FAQ content at module initialization to avoid repeated file reads
 const faqContent = readFileSync(
@@ -77,6 +85,42 @@ export async function POST(req: NextRequest) {
   ) {
     return NextResponse.json({
       reply: getFaqSection("care"),
+    });
+  }
+
+  // Product search intent
+  const isProductIntent = PRODUCT_KEYWORDS.some((kw) =>
+    new RegExp(`\\b${kw}\\b`).test(message)
+  );
+
+  if (isProductIntent) {
+    const results = await searchProducts(message, 5);
+
+    if (results === null) {
+      return NextResponse.json({
+        reply:
+          "I'd love to help you find products, but the product catalog isn't loaded yet. " +
+          "To enable product search, please add your Shopify export as `src/lib/products.json` in the project root.",
+      });
+    }
+
+    if (results.length === 0) {
+      return NextResponse.json({
+        reply:
+          "I couldn't find any products matching your request. Could you try describing what you're looking for in a different way?",
+      });
+    }
+
+    const productLines = results
+      .map((p) => {
+        const link = `https://www.littlellama.dk/en-eu/products/${p.handle}`;
+        const priceText = p.price ? ` — ${p.price}` : "";
+        return `• [${p.title}](${link})${priceText}`;
+      })
+      .join("\n");
+
+    return NextResponse.json({
+      reply: `Here are some products that might interest you:\n\n${productLines}`,
     });
   }
 
