@@ -121,12 +121,42 @@ export async function POST(req: NextRequest) {
     "where can i find",
     "show me some",
     "can you show",
+    "interested in",
+    "i am interested",
+    "i'd like",
+    "i'd love",
+    "i would like",
+    "i would love",
+    "got any",
+    "have any",
+    "any",
+    "browse",
+    "see some",
+    "see your",
+    "show your",
+    "what do you have",
   ];
   const hasProductIntent = productIntentPhrases.some((phrase) =>
     msgLower.includes(phrase)
   );
   if (!isLikelyFaqQuestion && hasProductIntent) {
-    const results = await searchProducts(message, 5);
+    let results = await searchProducts(message, 5);
+
+    // If no results, try a simplified query (strip modifiers, keep product type)
+    if (!results || results.length === 0) {
+      const simplifiedQuery = message
+        .toLowerCase()
+        .replace(
+          /\b(small|big|little|tiny|large|boy|girl|boys|girls|baby|toddler|infant|newborn|interested in|i am|i want|i need|i'd like|i would like|show me|looking for|find me)\b/g,
+          " "
+        )
+        .replace(/\s+/g, " ")
+        .trim();
+      if (simplifiedQuery.length > 1) {
+        results = await searchProducts(simplifiedQuery, 5);
+      }
+    }
+
     if (results !== null && results.length > 0) {
       return NextResponse.json({
         reply: "Here are some products that might interest you:",
