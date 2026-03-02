@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import products from '../../../lib/products/products.json';
+import products from '../../lib/products.json';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
