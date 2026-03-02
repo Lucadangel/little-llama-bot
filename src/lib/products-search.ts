@@ -77,7 +77,16 @@ export interface ProductResult {
 
 const CATALOG_PATH = join(process.cwd(), "src", "lib", "products.json");
 
-const BOY_TAGS = ["dreng", "drengetøj", "strik til dreng", "drenge sko"];
+const BOY_TAGS = [
+  "dreng",
+  "drengetøj",
+  "strik til dreng",
+  "drenge sko",
+  "drenge",
+  "boy",
+  "boys",
+  "til dreng",
+];
 const GIRL_TAGS = [
   "pige",
   "pigetøj",
