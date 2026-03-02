@@ -79,10 +79,13 @@ function EscalationCard() {
 }
 
 function renderInline(text: string): React.ReactNode[] {
-  const parts = text.split(/(\*\*.+?\*\*)/g);
+  const parts = text.split(/(\*\*.+?\*\*|\*.+?\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
     }
     return part;
   });
@@ -95,7 +98,11 @@ function renderMarkdown(text: string): React.ReactNode {
 
   function flushList() {
     if (listItems.length > 0) {
-      result.push(<ul key={`ul-${result.length}`}>{listItems}</ul>);
+      result.push(
+        <ul key={`ul-${result.length}`} className="mt-1 mb-1 ml-4 list-disc space-y-1">
+          {listItems}
+        </ul>
+      );
       listItems = [];
     }
   }
@@ -103,17 +110,25 @@ function renderMarkdown(text: string): React.ReactNode {
   lines.forEach((line, i) => {
     const listMatch = line.match(/^[*-]\s+(.*)/);
     if (listMatch) {
-      listItems.push(<li key={i}>{renderInline(listMatch[1])}</li>);
+      listItems.push(
+        <li key={i} className="text-sm leading-relaxed">
+          {renderInline(listMatch[1])}
+        </li>
+      );
     } else {
       flushList();
       if (line.trim() !== "") {
-        result.push(<p key={i}>{renderInline(line)}</p>);
+        result.push(
+          <p key={i} className="mb-1 leading-relaxed">
+            {renderInline(line)}
+          </p>
+        );
       }
     }
   });
 
   flushList();
-  return <>{result}</>;
+  return <div className="space-y-0.5">{result}</div>;
 }
 
 function LoadingDots() {
@@ -147,7 +162,11 @@ export default function ChatWidget() {
       text: text.trim(),
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      { role: "assistant", text: "", timestamp: new Date() },
+    ]);
     setInput("");
     setLoading(true);
 
@@ -163,24 +182,90 @@ export default function ChatWidget() {
           })),
         }),
       });
-      const data = await res.json();
-      const assistantMsg: Message = {
-        role: "assistant",
-        text: data.reply,
-        timestamp: new Date(),
-        ui: data.ui,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (contentType.includes("text/event-stream")) {
+        if (!res.body) {
+          throw new Error("No response body for SSE stream");
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const event = JSON.parse(line.slice(6)) as {
+                  type: string;
+                  chunk?: string;
+                  text?: string;
+                  ui?: Message["ui"];
+                };
+                if (event.type === "text") {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = {
+                      ...updated[updated.length - 1],
+                      text: updated[updated.length - 1].text + (event.chunk ?? ""),
+                    };
+                    return updated;
+                  });
+                } else if (event.type === "replace") {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = {
+                      ...updated[updated.length - 1],
+                      text: event.text ?? "",
+                    };
+                    return updated;
+                  });
+                } else if (event.type === "ui") {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = {
+                      ...updated[updated.length - 1],
+                      ui: event.ui,
+                    };
+                    return updated;
+                  });
+                } else if (event.type === "done") {
+                  setLoading(false);
+                }
+              } catch {
+                // ignore parse errors
+              }
+            }
+          }
+        }
+      } else {
+        const data = (await res.json()) as { reply: string; ui?: Message["ui"] };
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            text: data.reply,
+            ui: data.ui,
+          };
+          return updated;
+        });
+      }
     } catch (error) {
       console.error("Chat API error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
           text: "Sorry, something went wrong. Please try again.",
-          timestamp: new Date(),
-        },
-      ]);
+        };
+        return updated;
+      });
     } finally {
       setLoading(false);
     }
