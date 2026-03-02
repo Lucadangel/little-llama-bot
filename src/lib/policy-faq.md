@@ -59,31 +59,86 @@ All prices include VAT. Prices are shown in DKK (Danish Kroner) or EUR. Payment 
 
 ## Washing & Care — Baby Alpaca
 
-Baby alpaca clothing is fantastic and basically does not need to be washed often — it can simply be aired out. Only wash if the item has a stain.
+Baby alpaca clothing is fantastic and basically does not need to be washed — it can simply be aired out occasionally. Only wash if the item has a stain.
 
-- **Hand wash recommended:** 30°C (hand-warm) water in a dishwashing tub. Keep water temperature constant — baby alpaca cannot tolerate temperature changes.
-- **Detergent:** Use detergent specifically for baby alpaca — must be without lanolin and without enzymes. Alternatively, a small teaspoon of organic hair shampoo works. Little Llama also sells organic vegan special soap for baby alpaca.
+**Hand wash only** — do not machine wash baby alpaca.
+
+- Hand wash in 30°C (hand-warm) water in a dishwashing tub.
+- Keep water temperature constant throughout — baby alpaca cannot tolerate temperature changes. Fill the tub first, then add the garment.
+- **Detergent:** Use detergent specifically for baby alpaca — must be without lanolin and without enzymes. Little Llama sells suitable detergent. Alternatively, a small teaspoon of organic hair shampoo works.
+- Little Llama also sells an organic vegan special soap for baby alpaca knits.
 - **Do not tumble dry.** Lay flat to dry in the correct shape.
-- **Baby alpaca is hypoallergenic** — ideal for babies with allergies or eczema, as it contains no lanolin and has a smooth, soft, non-itchy surface.
+- **Baby alpaca is hypoallergenic** — ideal for babies with allergies or eczema, as it contains no lanolin and has a smooth, soft, non-itchy surface. It also does not pill.
 
-## Washing & Care — Wool (Merino, Cashmere, Alpaca)
+## Washing & Care — Merino Wool
 
-Wool knitwear generally does not need frequent washing — airing out is often enough. Only wash when necessary.
+Merino wool knitwear generally does not need frequent washing — airing out is often enough. Only wash when necessary.
 
-- **Hand wash preferred:** MAX 30°C (finger-warm/hand-warm) water. Keep water temperature constant throughout — wool cannot tolerate temperature changes.
-- If machine washing, use a **wool programme at max 30°C** and place the garment in a laundry bag.
+Machine washing is possible only if your machine has a genuine wool programme — but **hand washing is really recommended**.
+
+- **Hand wash preferred:** MAX 30°C (finger-warm/hand-warm) water. Use plenty of water.
+- Keep water temperature constant throughout — wool cannot tolerate temperature changes. Fill the tub first, then add the garment.
 - **Do not soak** wool knitwear.
+- If machine washing, use a **wool programme at max 30°C** and place the garment in a laundry bag.
 - Use **liquid wool detergent** with a neutral pH. Little Llama also sells organic, vegan, enzyme-free detergents.
 - Move the garment carefully in the water — do not rub.
 - Rinse in water at the **same temperature** as the wash water.
-- **Drying:** Gently remove excess water using a towel or spin lightly in a pillowcase. **Always dry flat** in the correct shape. Never hang a wet wool garment. Avoid direct sunlight.
+- **Drying:** Spin lightly in a pillowcase, or gently press out moisture using towels. **Always dry flat** in the correct shape. Avoid direct sunlight. Never hang a wet wool garment. Avoid terry towels as a drying surface — they absorb moisture and can cause colour bleeding and loss of elasticity.
 - **Do not tumble dry** — wool will shrink.
-- **Do not press or steam** wool knitwear directly. If needed, use a steam iron with a damp cloth between the iron and the garment.
+- The surface of wool becomes smoother after washing and light steaming, but **never press wool knitwear** — neither wet nor dry.
+- When steaming, use a steam iron or an ordinary iron with a damp cloth between the iron and the garment. **Wool knitwear must never be pressed directly.**
 - **Silk must not be pressed or steamed.**
+- Hanging wool clothes outside in cold or freezing weather often cleans them naturally (lanolin self-cleans).
 
 Note: Untreated wool, angora, mohair, and alpaca must always be hand washed.
 
-Hanging wool clothes outside in cold or freezing weather often cleans them naturally (lanolin self-cleans).
+## Washing & Care — Cashmere
+
+Cashmere is one of the finest natural fibres in the world. High-quality cashmere actually becomes softer and nicer with use and washing, and keeps its shape and measurements very well.
+
+Cashmere has a self-cleaning effect — odours disappear naturally, so you do not need to wash it often. Airing outside or hanging in the bathroom while you shower is often enough.
+
+**Machine washing is gentler for cashmere than hand washing** — the machine ensures a constant correct temperature.
+
+**Machine wash:**
+- Wash on a safe wool programme at 30°C.
+- Place the garment in a laundry bag.
+- Wash with similar colours.
+- Use a fine wool detergent suitable for cashmere.
+- **Do not use fabric softener.**
+- **Do not tumble dry.**
+
+**Hand wash (if preferred):**
+- Soak in 30°C water for a maximum of 5 minutes — do not soak longer.
+- Gently press the wash water through the garment — do not wring or scrub.
+- Rinse in water at the same temperature.
+
+**Drying:**
+- Lay flat on a towel in the correct shape. Never hang damp or wet cashmere — it will stretch out of shape.
+- Stretch gently into shape while still damp.
+- Alternatively, roll the garment smoothly in a clean dry towel and leave to dry at room temperature.
+- Avoid direct sunlight and strong heat — the garment may bleach.
+
+**Ironing:**
+- Cashmere can be ironed with steam on the wool setting (approx. medium heat — 2 dots).
+- Always place a towel or cloth between the iron and the cashmere garment.
+
+**Removing stains:**
+- Treat stains with a regular wash as described above. Do not scrub or rub stains — this damages cashmere fibres.
+- If a stain cannot be removed, contact a dry cleaner.
+
+**Storage:**
+- Give your cashmere knit at least one day's rest after wearing.
+- Air it out in fresh air for a day occasionally.
+- Do not leave cashmere hanging on a hanger for more than a few days — it will stretch out of shape.
+- Store cashmere lying flat in a cupboard or drawer.
+- Before storing for a season, make sure the garment is clean. Fold in a cotton or plastic bag with cedar or lavender to keep moths away.
+- To kill moths and insects, place the garment in a sealed freezer bag in the freezer for a day.
+
+**Pilling (lint/fluff):**
+- All cashmere knitwear pills initially, especially under the arms and where knit rubs against knit. This is normal and decreases with use and washing, as high-quality cashmere consists mainly of long fibres that pill less than short fibres.
+- Remove pills with a wool comb (pull in one direction on a flat surface), carefully by hand, or with an electric lint remover (use carefully on loosely knitted items).
+- Remove pills before washing — the garment will feel softer and fluffier after washing.
 
 ## Size Guide
 
