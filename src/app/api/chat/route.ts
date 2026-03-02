@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { searchProducts } from "@/lib/products-search";
-import { ollamaChat, isOllamaAvailable } from "@/lib/ollama";
+import { ollamaChatStream, isOllamaAvailable } from "@/lib/ollama";
 
 const MAX_HISTORY = 10;
 
@@ -159,33 +159,54 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const rawReply = await ollamaChat(messages);
+  const encoder = new TextEncoder();
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      let fullText = "";
+      try {
+        for await (const chunk of ollamaChatStream(messages)) {
+          fullText += chunk;
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ content: chunk })}\n\n`)
+          );
+        }
 
-  // Detect product search intent from LLM output
-  const productAction = extractProductAction(rawReply);
-  if (productAction) {
-    const { query, fullMatch } = productAction;
-    const displayReply = rawReply.replace(fullMatch, "").trim();
+        // Detect product search intent from LLM output
+        const productAction = extractProductAction(fullText);
+        if (productAction) {
+          const { query, fullMatch } = productAction;
+          const displayReply = fullText.replace(fullMatch, "").trim();
+          const results = await searchProducts(query, 5);
+          const ui =
+            results && results.length > 0
+              ? { kind: "product_carousel", products: results }
+              : undefined;
+          const fallback = ui
+            ? "Here are some products that might interest you:"
+            : "I couldn't find any products matching your request. Could you try describing what you're looking for in a different way?";
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ done: true, reply: displayReply || fallback, ui })}\n\n`
+            )
+          );
+        } else {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`)
+          );
+        }
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        controller.close();
+      }
+    },
+  });
 
-    const results = await searchProducts(query, 5);
-
-    if (results === null || results.length === 0) {
-      return NextResponse.json({
-        reply:
-          displayReply ||
-          "I couldn't find any products matching your request. Could you try describing what you're looking for in a different way?",
-      });
-    }
-
-    return NextResponse.json({
-      reply:
-        displayReply || "Here are some products that might interest you:",
-      ui: {
-        kind: "product_carousel",
-        products: results,
-      },
-    });
-  }
-
-  return NextResponse.json({ reply: rawReply });
+  return new Response(readableStream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }
