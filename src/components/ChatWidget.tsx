@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ProductCarousel, type ProductItem } from "./ProductCarousel";
 
 interface Message {
   role: "user" | "assistant";
   text: string;
   timestamp: Date;
-  ui?: { kind: string };
+  ui?: { kind: string; products?: ProductItem[] };
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -116,7 +117,13 @@ export default function ChatWidget() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text.trim() }),
+        body: JSON.stringify({
+          message: text.trim(),
+          history: messages.map((m) => ({
+            role: m.role,
+            content: m.text,
+          })),
+        }),
       });
       const data = await res.json();
       const assistantMsg: Message = {
@@ -234,6 +241,11 @@ export default function ChatWidget() {
                 >
                   {msg.text}
                   {msg.ui?.kind === "escalation_form" && <EscalationCard />}
+                  {msg.ui?.kind === "product_carousel" &&
+                    msg.ui.products &&
+                    msg.ui.products.length > 0 && (
+                      <ProductCarousel products={msg.ui.products} />
+                    )}
                 </div>
                 <span className="text-xs text-muted-foreground px-1">
                   {formatTime(msg.timestamp)}
