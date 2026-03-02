@@ -1,61 +1,27 @@
-# Little Llama — FAQ & Brand Guide
+# Little Llama — FAQ
 
 ## About Us
 
-Little Llama is an exclusive Danish children's clothing brand based in Aarhus, Denmark. We design super soft and unique knitwear made only in natural materials — 100% baby alpaca or 80% baby alpaca with 20% silk. The collection is inspired by the Nordic minimalist style with unique details, made from the finest baby alpaca yarn of the highest quality for babies and small children aged 0–5 years.
-
-Our vision is to combine the natural yarn from alpacas in the Peruvian highlands with the Danish tradition of design and good craftsmanship. Baby alpaca wool is one of the finest types of yarn worldwide, appealing to those who are both environmentally and fashion conscious. All our products are made with respect for nature and the people involved in the process.
-
-You can reach us at:
-- **Phone:** +45 30284455 (Mon–Fri 10am–5pm)
-- **Email:** info@littlellama.dk
-- **Website:** littlellama.dk
+Little Llama is a Danish children's clothing brand founded with a love for natural fibres and mindful dressing. We create soft, premium garments for babies and children using alpaca, silk, wool, and cashmere — materials that are gentle on sensitive skin and kind to the planet. Our store is at [littlellama.dk](https://www.littlellama.dk).
 
 ## Shipping
 
-**Delivery time:** 1–3 business days within Denmark.
+We ship internationally from Denmark. Here are our shipping options:
 
-Little Llama ships with DAO and PostNord, depending on your location. Freight is calculated based on weight. You can choose between delivery to a parcel shop or home delivery.
+- **Standard Shipping (5–9 business days):** Free on orders over 500 DKK; flat rate for orders below.
+- **Express Shipping (2–4 business days):** Available at checkout for an additional fee.
 
-You will receive a track and trace number so you can follow your package from our warehouse to your home.
-
-**Shipping costs:**
-
-- **Free shipping** on orders over DKK 500.
-- **DAO to parcel shop:** from DKK 40
-- **DAO home delivery:** from DKK 39
-- **PostNord to parcel shop:** DKK 48
-- **PostNord home delivery:** DKK 58
-
-**International shipping:**
-- EU countries: from DKK 90 with DAO365 / PostNord
-- Asia / North America / Oceania: from €35 depending on destination and weight
-
-**Important for international orders:** Countries outside the EU may be subject to customs duties and VAT. The recipient/buyer pays any duty, VAT, and customs clearance fees themselves. This also applies to Norway (which is not an EU member). It is the customer's own responsibility to familiarise themselves with the import rules of their country.
+Orders are processed Monday–Friday (excluding Danish public holidays). You will receive a tracking number by email once your order has shipped. Delivery times may vary for remote destinations. Import duties and taxes for international orders are the responsibility of the customer — please check your local customs regulations.
 
 ## Returns & Refunds
 
-**Right of withdrawal:** There is a 14-day full right of return on goods purchased on the website. The 14-day period starts on the day the order is delivered.
+We want you to love your Little Llama purchase. If you are not completely satisfied:
 
-**How to start a return:** Contact us by email at info@littlellama.dk or by phone +45 30284455, clearly stating your wish to use your right of withdrawal and your order number. You can also type "contact" in this chat to reach us.
-
-**Return shipping costs:** The customer bears the return shipping costs. Items must be sent with tracking so both you and Little Llama can follow the package. Little Llama does not accept packages sent cash on delivery or without tracking.
-
-**Condition of returned items:** Items must be in original condition — tried on like you would in a physical store, but not worn or washed beyond that. Items that show signs of use beyond this may result in a partial or no refund, at Little Llama's assessment.
-
-**Refunds:** The full purchase amount (excluding original delivery costs) is refunded within 14 days of receiving the returned item, to the original payment method or bank account.
-
-**Right of complaint (warranty):** There is a 2-year warranty on all products in accordance with the Danish Sales Act, covering defects in material and manufacturing. Complaints must be reported within a reasonable time (max. 2 months) after discovery of the defect. Contact: info@littlellama.dk or +45 30284455.
-
-## Payment
-
-Little Llama accepts the following payment methods:
-- Visa/Dankort
-- Visa Electron
-- MasterCard
-- MobilePay Online
-
-All prices include VAT. Prices are shown in DKK (Danish Kroner) or EUR. Payment is only debited when the item is shipped.
+- **Return window:** 30 days from the date of delivery.
+- **Condition:** Items must be unworn, unwashed, and in their original packaging with all tags attached.
+- **How to start a return:** Contact us through the form on our website at littlellama.dk or type "contact" in this chat. Please have your order number ready.
+- **Refunds:** Once we receive and inspect your return, refunds are issued to the original payment method within 5–7 business days.
+- **Exchanges:** We are happy to exchange for a different size or colour, subject to availability. Sale items are final sale and not eligible for returns or exchanges.
 
 ## Washing & Care — Baby Alpaca
 
@@ -139,26 +105,3 @@ Cashmere has a self-cleaning effect — odours disappear naturally, so you do no
 - All cashmere knitwear pills initially, especially under the arms and where knit rubs against knit. This is normal and decreases with use and washing, as high-quality cashmere consists mainly of long fibres that pill less than short fibres.
 - Remove pills with a wool comb (pull in one direction on a flat surface), carefully by hand, or with an electric lint remover (use carefully on loosely knitted items).
 - Remove pills before washing — the garment will feel softer and fluffier after washing.
-
-## Size Guide
-
-All sizes are indicated in both centimetres and age. Sizes are based on age, meaning a size fits best for a child at that age:
-
-- **50 cm** — 0 months
-- **56/62 cm** — 3–6 months
-- **68/74 cm** — 9–12 months
-- **80/86 cm** — 12–18 months
-- **92 cm** — 2 years
-- **98 cm** — 3 years
-- **104 cm** — 4 years
-
-For size 4 years, the garment fits throughout the child's 4th year of life (until they turn 5).
-
-Download the measurement chart (English): https://cdn.shopify.com/s/files/1/1477/4748/files/MEASUREMENT_CHART_ENGLISH.pdf
-
-## Sustainability
-
-Little Llama encourages treating clothes sustainably:
-- Wash only when necessary — air out instead.
-- Pass clothes on to siblings or friends when outgrown.
-- Recycle responsibly when the garment reaches end of life.

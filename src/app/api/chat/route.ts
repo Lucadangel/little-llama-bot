@@ -25,10 +25,11 @@ const SYSTEM_PROMPT = `You are a warm, helpful support assistant for Little Llam
 ## Your role
 1. Answer questions about shipping, returns, payments, washing & care, and sizing using ONLY the FAQ below.
 2. Help customers find products. When a customer asks to see, find, or buy a product, output ONLY this JSON on its own line (no other text on that line): {"action":"show_products","query":"<search terms>"}
-   IMPORTANT: Output the JSON as a SINGLE bare line with NO markdown, NO backticks, NO code block. Do NOT wrap it in \`\`\`json ... \`\`\` or any other formatting. Example: {"action":"show_products","query":"alpaca cardigan"}
-3. If a customer wants to speak to a human, tell them to type "contact" to reach our team.
+   IMPORTANT: Output the JSON as a SINGLE bare line with NO markdown, NO backticks, NO code block. Do NOT wrap it in `json ...` or any other formatting. Example: {"action":"show_products","query":"alpaca cardigan"}
+3. If a customer wants to speak to a human, tell them to type "contact".
 4. For general questions about the brand, materials, or sustainability, use the brand context and FAQ below.
-5. For ANYTHING you are not sure about — do NOT guess or invent information. Say: "I'm not sure about that — but I'm happy to help! Try describing a product you're looking for (e.g. 'blue alpaca cardigan') and I'll search our range. You can also type 'contact' to reach our team."
+5. When a customer asks "do you have X?", "X?" or any shopping question, ALWAYS output the show_products JSON action with X as the query — never say you are unsure about products.
+6. For ANYTHING you are not sure about — do NOT guess or invent information. Say: "I'm not sure about that — but I'm happy to help! Try describing what you're looking for (e.g. 'blue alpaca cardigan for 6 months') and I'll search our range. You can also type 'contact' to reach our team."
 
 ## STRICT RULES
 - NEVER invent specific facts (prices, policies, locations, phone numbers, emails) not present in the FAQ or brand context above.
@@ -140,23 +141,29 @@ export async function POST(req: NextRequest) {
     msgLower.includes(phrase)
   );
 
-  // Short queries (1–4 words, no FAQ or escalation keywords) are treated as product searches
-  const words = msgLower.trim().split(/\s+/);
-  const isShortProductQuery =
-    words.length <= 4 && !isLikelyFaqQuestion;
+  // Gate 2b — Short query fast-path: 1–4 word messages with no FAQ keywords are likely product searches
+  const strippedWords = msgLower
+    .replace(/[?!.,]/g, "")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+  const isShortQuery =
+    !isLikelyFaqQuestion &&
+    strippedWords.length >= 1 &&
+    strippedWords.length <= 4;
 
-  if (hasProductIntent || isShortProductQuery) {
+  if (!isLikelyFaqQuestion && (hasProductIntent || isShortQuery)) {
     let results = await searchProducts(message, 5);
 
-    // If no results, try a simplified query (strip intent phrases, modifiers, and punctuation)
+    // If no results, try a simplified query (strip question framing, keep product terms)
     if (!results || results.length === 0) {
       const simplifiedQuery = message
         .toLowerCase()
-        .replace(/[?!]/g, " ")
         .replace(
-          /\b(do you have|have you got|got any|show me|looking for|find me|i am|i want|i need|i'd like|i would like|i'm looking for|interested in|small|big|little|tiny|large|boy|girl|boys|girls|baby|toddler|infant|newborn|any)\b/g,
+          /\b(do you have|have you got|got any|have any|do you sell|can i get|can i buy|i am looking for|i'm looking for|show me|find me|i want|i need|i'd like|i would like)\b/g,
           " "
         )
+        .replace(/[?!]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
       if (simplifiedQuery.length > 1) {
@@ -216,11 +223,20 @@ export async function POST(req: NextRequest) {
       // Post-process: check if LLM emitted a product action
       const productAction = extractProductAction(fullText);
       if (productAction) {
-        const { query, fullMatch } = productAction;
+        const { query: rawQuery, fullMatch } = productAction;
+        // If LLM emitted an empty query, fall back to the original user message
+        const strippedMessage = message
+          .toLowerCase()
+          .replace(
+            /\b(do you have|have you got|got any|have any|do you sell|can i get)\b/gi,
+            " "
+          )
+          .replace(/[?!]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const query = rawQuery.trim() || strippedMessage || message;
         send({ type: "replace", text: fullText.replace(fullMatch, "").trim() });
-        // Fall back to original user message if LLM emitted an empty query
-        const effectiveQuery = query || message;
-        const results = await searchProducts(effectiveQuery, 5);
+        const results = await searchProducts(query, 5);
         if (results && results.length > 0) {
           send({ type: "ui", ui: { kind: "product_carousel", products: results } });
         }
@@ -235,7 +251,7 @@ export async function POST(req: NextRequest) {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
     },
   });
 }
