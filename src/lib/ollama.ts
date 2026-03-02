@@ -17,6 +17,19 @@ export async function ollamaChat(
   return response.message.content;
 }
 
+export async function* ollamaChatStream(
+  messages: { role: string; content: string }[]
+): AsyncGenerator<string> {
+  const response = await client.chat({
+    model: OLLAMA_MODEL,
+    messages: messages as { role: "user" | "assistant" | "system"; content: string }[],
+    stream: true,
+  });
+  for await (const chunk of response) {
+    if (chunk.message?.content) yield chunk.message.content;
+  }
+}
+
 export async function isOllamaAvailable(): Promise<boolean> {
   try {
     const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`);

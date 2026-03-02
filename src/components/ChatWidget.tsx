@@ -79,10 +79,13 @@ function EscalationCard() {
 }
 
 function renderInline(text: string): React.ReactNode[] {
-  const parts = text.split(/(\*\*.+?\*\*)/g);
+  const parts = text.split(/(\*\*.+?\*\*|(?<!\*)\*(?!\*).+?(?<!\*)\*(?!\*))/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
     }
     return part;
   });
@@ -95,7 +98,7 @@ function renderMarkdown(text: string): React.ReactNode {
 
   function flushList() {
     if (listItems.length > 0) {
-      result.push(<ul key={`ul-${result.length}`}>{listItems}</ul>);
+      result.push(<ul key={`ul-${result.length}`} className="list-disc ml-4 space-y-1">{listItems}</ul>);
       listItems = [];
     }
   }
@@ -147,7 +150,12 @@ export default function ChatWidget() {
       text: text.trim(),
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    const placeholder: Message = {
+      role: "assistant",
+      text: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg, placeholder]);
     setInput("");
     setLoading(true);
 
@@ -163,25 +171,102 @@ export default function ChatWidget() {
           })),
         }),
       });
-      const data = await res.json();
-      const assistantMsg: Message = {
-        role: "assistant",
-        text: data.reply,
-        timestamp: new Date(),
-        ui: data.ui,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+
+      const contentType = res.headers.get("content-type") ?? "";
+
+      if (contentType.includes("text/event-stream")) {
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("Response body is empty");
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let firstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+            try {
+              const event = JSON.parse(jsonStr) as {
+                type: string;
+                chunk?: string;
+                text?: string;
+                ui?: { kind: string; products?: ProductItem[] };
+              };
+
+              if (event.type === "text" && event.chunk) {
+                if (firstChunk) {
+                  setLoading(false);
+                  firstChunk = false;
+                }
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const last = next[next.length - 1];
+                  next[next.length - 1] = { ...last, text: last.text + event.chunk! };
+                  return next;
+                });
+              } else if (event.type === "replace" && event.text !== undefined) {
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const last = next[next.length - 1];
+                  next[next.length - 1] = { ...last, text: event.text! };
+                  return next;
+                });
+              } else if (event.type === "ui" && event.ui) {
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const last = next[next.length - 1];
+                  next[next.length - 1] = { ...last, ui: event.ui };
+                  return next;
+                });
+              } else if (event.type === "error") {
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const last = next[next.length - 1];
+                  if (!last.text) {
+                    next[next.length - 1] = { ...last, text: "Sorry, something went wrong. Please try again." };
+                  }
+                  return next;
+                });
+              }
+              // "done" event — nothing extra needed
+            } catch {
+              // skip malformed SSE events
+            }
+          }
+        }
+      } else {
+        const data = await res.json();
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = {
+            role: "assistant",
+            text: data.reply,
+            timestamp: new Date(),
+            ui: data.ui,
+          };
+          return next;
+        });
+        setLoading(false);
+      }
     } catch (error) {
       console.error("Chat API error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = {
           role: "assistant",
           text: "Sorry, something went wrong. Please try again.",
           timestamp: new Date(),
-        },
-      ]);
-    } finally {
+        };
+        return next;
+      });
       setLoading(false);
     }
   }
