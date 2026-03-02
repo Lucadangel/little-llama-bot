@@ -79,10 +79,13 @@ function EscalationCard() {
 }
 
 function renderInline(text: string): React.ReactNode[] {
-  const parts = text.split(/(\*\*.+?\*\*)/g);
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
+      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
     }
     return part;
   });
@@ -92,28 +95,42 @@ function renderMarkdown(text: string): React.ReactNode {
   const lines = text.split("\n");
   const result: React.ReactNode[] = [];
   let listItems: React.ReactNode[] = [];
+  let listKey = 0;
 
   function flushList() {
     if (listItems.length > 0) {
-      result.push(<ul key={`ul-${result.length}`}>{listItems}</ul>);
+      result.push(
+        <ul key={`ul-${listKey++}`} className="mt-1 mb-1 ml-4 list-disc space-y-1">
+          {listItems}
+        </ul>
+      );
       listItems = [];
     }
   }
 
   lines.forEach((line, i) => {
-    const listMatch = line.match(/^[*-]\s+(.*)/);
+    const listMatch = line.match(/^[*\-•]\s+(.*)/);
     if (listMatch) {
-      listItems.push(<li key={i}>{renderInline(listMatch[1])}</li>);
+      listItems.push(
+        <li key={i} className="text-sm leading-relaxed">
+          {renderInline(listMatch[1].trim())}
+        </li>
+      );
     } else {
       flushList();
-      if (line.trim() !== "") {
-        result.push(<p key={i}>{renderInline(line)}</p>);
+      const trimmed = line.trim();
+      if (trimmed !== "") {
+        result.push(
+          <p key={i} className="mb-1 leading-relaxed">
+            {renderInline(trimmed)}
+          </p>
+        );
       }
     }
   });
 
   flushList();
-  return <>{result}</>;
+  return <div className="space-y-0.5">{result}</div>;
 }
 
 function LoadingDots() {
@@ -151,37 +168,109 @@ export default function ChatWidget() {
     setInput("");
     setLoading(true);
 
+    // Add empty assistant placeholder for streaming
+    const placeholder: Message = { role: "assistant", text: "", timestamp: new Date() };
+    setMessages((prev) => [...prev, placeholder]);
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text.trim(),
-          history: messages.map((m) => ({
-            role: m.role,
-            content: m.text,
-          })),
+          history: messages.map((m) => ({ role: m.role, content: m.text })),
         }),
       });
-      const data = await res.json();
-      const assistantMsg: Message = {
-        role: "assistant",
-        text: data.reply,
-        timestamp: new Date(),
-        ui: data.ui,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+
+      const contentType = res.headers.get("content-type") ?? "";
+
+      if (contentType.includes("text/event-stream")) {
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let firstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const event = JSON.parse(line.slice(6)) as {
+                type: string;
+                chunk?: string;
+                text?: string;
+                ui?: Message["ui"];
+              };
+
+              if (event.type === "text" && event.chunk) {
+                if (firstChunk) {
+                  setLoading(false);
+                  firstChunk = false;
+                }
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, text: last.text + event.chunk };
+                  }
+                  return updated;
+                });
+              } else if (event.type === "replace" && event.text !== undefined) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, text: event.text! };
+                  }
+                  return updated;
+                });
+              } else if (event.type === "ui" && event.ui) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, ui: event.ui };
+                  }
+                  return updated;
+                });
+              } else if (event.type === "done") {
+                setLoading(false);
+              }
+            } catch { /* ignore */ }
+          }
+        }
+        setLoading(false);
+      } else {
+        // Non-streaming JSON (fast-paths)
+        const data = await res.json();
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            text: data.reply ?? "",
+            timestamp: new Date(),
+            ui: data.ui,
+          };
+          return updated;
+        });
+        setLoading(false);
+      }
     } catch (error) {
       console.error("Chat API error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
           role: "assistant",
           text: "Sorry, something went wrong. Please try again.",
           timestamp: new Date(),
-        },
-      ]);
-    } finally {
+        };
+        return updated;
+      });
       setLoading(false);
     }
   }
