@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ProductCarousel } from '../components/ProductCarousel';
 import products from '../lib/products.json';
+import styles from './chatbot.module.css';
 
 const Chatbot = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,9 +29,9 @@ const Chatbot = () => {
     }, []);
 
     return (
-        <div className="chat-container">
+        <div className={styles.chatContainer}>
             {messages.map((message, index) => (
-                <div key={index} className={`chat-message ${message.sender}`}>{message.text}</div>
+                <div key={index} className={`${styles.chatMessage} ${styles[message.sender as 'bot' | 'user']}`}>{message.text}</div>
             ))}
             {/* Render ProductCarousel if foundProducts is not empty */}
             {foundProducts.length > 0 && <ProductCarousel products={foundProducts} />}
