@@ -26,9 +26,10 @@ const SYSTEM_PROMPT = `You are a warm, helpful support assistant for Little Llam
 1. Answer questions about shipping, returns, payments, washing & care, and sizing using ONLY the FAQ below.
 2. Help customers find products. When a customer asks to see, find, or buy a product, output ONLY this JSON on its own line (no other text on that line): {"action":"show_products","query":"<search terms>"}
    IMPORTANT: Output the JSON as a SINGLE bare line with NO markdown, NO backticks, NO code block. Do NOT wrap it in \`\`\`json ... \`\`\` or any other formatting. Example: {"action":"show_products","query":"alpaca cardigan"}
-3. If a customer wants to speak to a human, tell them to type "contact" or reach us at info@littlellama.dk or +45 30284455.
+3. If a customer wants to speak to a human, tell them to type "contact".
 4. For general questions about the brand, materials, or sustainability, use the brand context and FAQ below.
-5. For ANYTHING you are not sure about — do NOT guess or invent information. Say: "I'm not sure about that, but I'm happy to help with shipping, returns, care instructions, or finding products! You can also reach us at info@littlellama.dk or call +45 30284455."
+5. For ANYTHING you are not sure about — do NOT guess or invent information. Say: "I'm not sure about that — but I'm happy to help! Try describing what you're looking for (e.g. 'blue alpaca cardigan for 6 months') and I'll search our range. You can also type 'contact' to reach our team."
+6. When a customer asks if you have a product (e.g. "do you have X?", "have you got X?", "X?"), ALWAYS output the show_products JSON action with X as the query — do NOT say you don't know.
 
 ## STRICT RULES
 - NEVER invent specific facts (prices, policies, locations, phone numbers, emails) not present in the FAQ or brand context above.
@@ -139,32 +140,40 @@ export async function POST(req: NextRequest) {
   const hasProductIntent = productIntentPhrases.some((phrase) =>
     msgLower.includes(phrase)
   );
-  if (!isLikelyFaqQuestion && hasProductIntent) {
-    let results = await searchProducts(message, 5);
+  if (!isLikelyFaqQuestion) {
+    // Short queries (1–4 words, no FAQ or escalation keywords) are treated as product searches
+    const wordCount = message.trim().split(/\s+/).filter((w) => w.replace(/[^\w]/g, "").length > 0).length;
+    const isShortQuery = wordCount >= 1 && wordCount <= 4;
+    if (hasProductIntent || isShortQuery) {
+      let results = await searchProducts(message, 5);
 
-    // If no results, try a simplified query (strip modifiers, keep product type)
-    if (!results || results.length === 0) {
-      const simplifiedQuery = message
-        .toLowerCase()
-        .replace(
-          /\b(small|big|little|tiny|large|boy|girl|boys|girls|baby|toddler|infant|newborn|interested in|i am|i want|i need|i'd like|i would like|show me|looking for|find me)\b/g,
-          " "
-        )
-        .replace(/\s+/g, " ")
-        .trim();
-      if (simplifiedQuery.length > 1) {
-        results = await searchProducts(simplifiedQuery, 5);
+      // If no results, try a simplified query (strip question framing, keep product type)
+      if (!results || results.length === 0) {
+        const simplifiedQuery = message
+          .toLowerCase()
+          .replace(/\b(do you have|have you got|got any|have any)\b/g, " ")
+          .replace(/\bany\s+/g, " ")
+          .replace(/[?!]/g, "")
+          .replace(
+            /\b(small|big|little|tiny|large|toddler|infant|newborn|interested in|i am|i want|i need|i'd like|i would like|show me|looking for|find me)\b/g,
+            " "
+          )
+          .replace(/\s+/g, " ")
+          .trim();
+        if (simplifiedQuery.length > 1) {
+          results = await searchProducts(simplifiedQuery, 5);
+        }
       }
-    }
 
-    if (results !== null && results.length > 0) {
-      return NextResponse.json({
-        reply: "Here are some products that might interest you:",
-        ui: {
-          kind: "product_carousel",
-          products: results,
-        },
-      });
+      if (results !== null && results.length > 0) {
+        return NextResponse.json({
+          reply: "Here are some products that might interest you:",
+          ui: {
+            kind: "product_carousel",
+            products: results,
+          },
+        });
+      }
     }
   }
 
@@ -211,7 +220,8 @@ export async function POST(req: NextRequest) {
       if (productAction) {
         const { query, fullMatch } = productAction;
         send({ type: "replace", text: fullText.replace(fullMatch, "").trim() });
-        const results = await searchProducts(query, 5);
+        const queryToSearch = query.trim() || message;
+        const results = await searchProducts(queryToSearch, 5);
         if (results && results.length > 0) {
           send({ type: "ui", ui: { kind: "product_carousel", products: results } });
         }
