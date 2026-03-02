@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { searchProducts } from "@/lib/products-search";
-import { ollamaChat, isOllamaAvailable } from "@/lib/ollama";
+import { ollamaChatStream, isOllamaAvailable } from "@/lib/ollama";
 
 const MAX_HISTORY = 10;
 
@@ -159,33 +159,66 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const rawReply = await ollamaChat(messages);
+  const stream = await ollamaChatStream(messages);
 
-  // Detect product search intent from LLM output
-  const productAction = extractProductAction(rawReply);
-  if (productAction) {
-    const { query, fullMatch } = productAction;
-    const displayReply = rawReply.replace(fullMatch, "").trim();
+  const encoder = new TextEncoder();
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      const sendEvent = (data: object) => {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
+        );
+      };
 
-    const results = await searchProducts(query, 5);
+      let fullText = "";
+      try {
+        for await (const chunk of stream) {
+          fullText += chunk;
+          sendEvent({ type: "text", chunk });
+        }
 
-    if (results === null || results.length === 0) {
-      return NextResponse.json({
-        reply:
-          displayReply ||
-          "I couldn't find any products matching your request. Could you try describing what you're looking for in a different way?",
-      });
-    }
+        const productAction = extractProductAction(fullText);
+        if (productAction) {
+          const { query, fullMatch } = productAction;
+          const displayReply = fullText.replace(fullMatch, "").trim();
+          const results = await searchProducts(query, 5);
 
-    return NextResponse.json({
-      reply:
-        displayReply || "Here are some products that might interest you:",
-      ui: {
-        kind: "product_carousel",
-        products: results,
-      },
-    });
-  }
+          if (results !== null && results.length > 0) {
+            sendEvent({
+              type: "replace",
+              text:
+                displayReply || "Here are some products that might interest you:",
+            });
+            sendEvent({
+              type: "ui",
+              data: { kind: "product_carousel", products: results },
+            });
+          } else {
+            sendEvent({
+              type: "replace",
+              text:
+                displayReply ||
+                "I couldn't find any products matching your request. Could you try describing what you're looking for in a different way?",
+            });
+          }
+        }
 
-  return NextResponse.json({ reply: rawReply });
+        sendEvent({ type: "done" });
+      } catch (err) {
+        console.error("SSE stream error:", err);
+        sendEvent({ type: "error", message: "Stream interrupted" });
+        sendEvent({ type: "done" });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readableStream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }

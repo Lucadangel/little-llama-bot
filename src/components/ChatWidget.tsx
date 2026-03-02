@@ -79,10 +79,13 @@ function EscalationCard() {
 }
 
 function renderInline(text: string): React.ReactNode[] {
-  const parts = text.split(/(\*\*.+?\*\*)/g);
+  const parts = text.split(/(\*\*.+?\*\*|\*.+?\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
     }
     return part;
   });
@@ -95,7 +98,7 @@ function renderMarkdown(text: string): React.ReactNode {
 
   function flushList() {
     if (listItems.length > 0) {
-      result.push(<ul key={`ul-${result.length}`}>{listItems}</ul>);
+      result.push(<ul key={`ul-${result.length}`} className="list-disc ml-4 space-y-1">{listItems}</ul>);
       listItems = [];
     }
   }
@@ -103,11 +106,11 @@ function renderMarkdown(text: string): React.ReactNode {
   lines.forEach((line, i) => {
     const listMatch = line.match(/^[*-]\s+(.*)/);
     if (listMatch) {
-      listItems.push(<li key={i}>{renderInline(listMatch[1])}</li>);
+      listItems.push(<li key={i} className="leading-relaxed">{renderInline(listMatch[1])}</li>);
     } else {
       flushList();
       if (line.trim() !== "") {
-        result.push(<p key={i}>{renderInline(line)}</p>);
+        result.push(<p key={i} className="leading-relaxed">{renderInline(line)}</p>);
       }
     }
   });
@@ -163,14 +166,77 @@ export default function ChatWidget() {
           })),
         }),
       });
-      const data = await res.json();
-      const assistantMsg: Message = {
-        role: "assistant",
-        text: data.reply,
-        timestamp: new Date(),
-        ui: data.ui,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+
+      const contentType = res.headers.get("Content-Type") ?? "";
+      if (contentType.includes("text/event-stream")) {
+        // SSE streaming path — push empty placeholder immediately
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: "", timestamp: new Date() },
+        ]);
+        setLoading(false);
+
+        if (!res.body) throw new Error("No response body for SSE stream");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+
+          for (const block of parts) {
+            const dataLine = block
+              .split("\n")
+              .find((l) => l.startsWith("data: "));
+            if (!dataLine) continue;
+            try {
+              const event = JSON.parse(dataLine.slice(6)) as {
+                type: string;
+                chunk?: string;
+                text?: string;
+                data?: { kind: string; products?: ProductItem[] };
+              };
+              if (event.type === "text" && event.chunk !== undefined) {
+                setMessages((prev) =>
+                  prev.map((m, i) =>
+                    i === prev.length - 1
+                      ? { ...m, text: m.text + event.chunk! }
+                      : m
+                  )
+                );
+              } else if (event.type === "replace" && event.text !== undefined) {
+                setMessages((prev) =>
+                  prev.map((m, i) =>
+                    i === prev.length - 1 ? { ...m, text: event.text! } : m
+                  )
+                );
+              } else if (event.type === "ui" && event.data) {
+                setMessages((prev) =>
+                  prev.map((m, i) =>
+                    i === prev.length - 1 ? { ...m, ui: event.data } : m
+                  )
+                );
+              }
+            } catch {
+              // ignore malformed SSE events
+            }
+          }
+        }
+      } else {
+        // JSON path — fast-path responses
+        const data = await res.json();
+        const assistantMsg: Message = {
+          role: "assistant",
+          text: data.reply,
+          timestamp: new Date(),
+          ui: data.ui,
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      }
     } catch (error) {
       console.error("Chat API error:", error);
       setMessages((prev) => [
