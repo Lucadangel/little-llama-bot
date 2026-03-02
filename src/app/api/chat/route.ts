@@ -80,6 +80,35 @@ export async function POST(req: NextRequest) {
   }
 
   // Product intent fast-path — skip LLM for simple product searches
+  const msgLower = message.toLowerCase();
+
+  // Gate 1 — FAQ guard: if the message is about a policy/FAQ topic, always go to the LLM
+  const faqKeywords = [
+    "ship",
+    "shipping",
+    "deliver",
+    "delivery",
+    "return",
+    "refund",
+    "exchange",
+    "wash",
+    "care",
+    "clean",
+    "dry",
+    "iron",
+    "material",
+    "fabric",
+    "size",
+    "sizing",
+    "payment",
+    "pay",
+    "order",
+    "track",
+    "tracking",
+  ];
+  const isLikelyFaqQuestion = faqKeywords.some((kw) => msgLower.includes(kw));
+
+  // Gate 2 — Product intent: only fast-path if Gate 1 passes and there is clear buying intent
   const productIntentPhrases = [
     "do you have",
     "show me",
@@ -87,39 +116,16 @@ export async function POST(req: NextRequest) {
     "find me",
     "i want",
     "i need",
+    "i'm looking",
+    "can i buy",
+    "where can i find",
+    "show me some",
+    "can you show",
   ];
-  const productIntentKeywords = [
-    "hat",
-    "shoe",
-    "cardigan",
-    "jumper",
-    "mittens",
-    "pants",
-    "bag",
-    "dress",
-    "blanket",
-    "vest",
-    "socks",
-    "top",
-    "t-shirt",
-    "beanie",
-    "cap",
-    "slippers",
-    "trousers",
-    "sweater",
-    "knitwear",
-    "onesie",
-    "backpack",
-    "clutch",
-  ];
-  const msgLower = message.toLowerCase();
-  const hasProductPhrase = productIntentPhrases.some((phrase) =>
+  const hasProductIntent = productIntentPhrases.some((phrase) =>
     msgLower.includes(phrase)
   );
-  const hasProductKeyword = productIntentKeywords.some((kw) =>
-    msgLower.includes(kw)
-  );
-  if (hasProductPhrase || hasProductKeyword) {
+  if (!isLikelyFaqQuestion && hasProductIntent) {
     const results = await searchProducts(message, 5);
     if (results !== null && results.length > 0) {
       return NextResponse.json({
