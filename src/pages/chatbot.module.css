@@ -1,0 +1,22 @@
+.chatContainer {
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatMessage {
+  border-radius: 10px;
+  padding: 10px;
+  margin: 5px;
+  max-width: 80%;
+}
+
+.bot {
+  background-color: #e4f0f6;
+  align-self: flex-start;
+}
+
+.user {
+  background-color: #d1ffd1;
+  align-self: flex-end;
+}
