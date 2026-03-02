@@ -79,7 +79,59 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Build message history for the LLM
+  // Product intent fast-path — skip LLM for simple product searches
+  const productIntentPhrases = [
+    "do you have",
+    "show me",
+    "looking for",
+    "find me",
+    "i want",
+    "i need",
+  ];
+  const productIntentKeywords = [
+    "hat",
+    "shoe",
+    "cardigan",
+    "jumper",
+    "mittens",
+    "pants",
+    "bag",
+    "dress",
+    "blanket",
+    "vest",
+    "socks",
+    "top",
+    "t-shirt",
+    "beanie",
+    "cap",
+    "slippers",
+    "trousers",
+    "sweater",
+    "knitwear",
+    "onesie",
+    "backpack",
+    "clutch",
+  ];
+  const msgLower = message.toLowerCase();
+  const hasProductPhrase = productIntentPhrases.some((phrase) =>
+    msgLower.includes(phrase)
+  );
+  const hasProductKeyword = productIntentKeywords.some((kw) =>
+    msgLower.includes(kw)
+  );
+  if (hasProductPhrase || hasProductKeyword) {
+    const results = await searchProducts(message, 5);
+    if (results !== null && results.length > 0) {
+      return NextResponse.json({
+        reply: "Here are some products that might interest you:",
+        ui: {
+          kind: "product_carousel",
+          products: results,
+        },
+      });
+    }
+  }
+
   const history: { role: string; content: string }[] = Array.isArray(
     body.history
   )
