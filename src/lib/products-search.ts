@@ -48,6 +48,10 @@ const SYNONYMS: Record<string, string[]> = {
   socks: ["sokker", "strømper"],
   top: ["top", "bluse", "trøje"],
   "t-shirt": ["t-shirt", "top", "bluse"],
+  jacket: ["jakke", "regnjakke", "softshell"],
+  coat: ["frakke", "jakke", "overgangsjakke"],
+  set: ["sæt", "gavesæt", "striksæt"],
+  gift: ["gave", "gavesæt"],
   girl: ["pige", "pigetøj", "piger"],
   girls: ["pige", "pigetøj", "piger"],
   boy: ["dreng", "drengetøj", "drenge"],
@@ -59,8 +63,29 @@ const SYNONYMS: Record<string, string[]> = {
   newborn: ["nyfødt", "baby", "babytøj"],
   toddler: ["børnetøj", "baby", "babytøj"],
   onesie: ["baby", "bodystocking"],
+  infant: ["nyfødt", "baby", "babytøj"],
   "key ring": ["nøglering"],
   clutch: ["clutch", "taske"],
+  pink: ["lyserød", "rosa"],
+  blue: ["blå", "lyseblå", "marineblå", "navy"],
+  red: ["rød", "bordeaux"],
+  green: ["grøn", "mørkegrøn", "lysegrøn"],
+  yellow: ["gul"],
+  white: ["hvid", "offwhite", "off-white"],
+  black: ["sort"],
+  grey: ["grå", "lysegrå"],
+  gray: ["grå", "lysegrå"],
+  brown: ["brun", "karamel"],
+  beige: ["sand", "natur"],
+  navy: ["marineblå", "blå"],
+  camel: ["karamel", "brun"],
+  orange: ["orange"],
+  purple: ["lilla", "lavendel"],
+  "0-3 months": ["0-3 mdr", "0-3 måneder", "newborn", "nyfødt"],
+  "3-6 months": ["3-6 mdr", "3-6 måneder"],
+  "6-12 months": ["6-12 mdr", "6-12 måneder"],
+  "12-18 months": ["12-18 mdr", "12-18 måneder"],
+  "18-24 months": ["18-24 mdr", "18-24 måneder"],
 };
 
 interface ProductCatalog {
@@ -119,7 +144,7 @@ function expandQuery(query: string): string[] {
   // Also check multi-word synonym keys (e.g. "key ring")
   const q = query.toLowerCase();
   for (const [key, synonyms] of Object.entries(SYNONYMS)) {
-    if (key.includes(" ") && containsWord(q, key)) {
+    if ((key.includes(" ") || key.includes("-")) && containsWord(q, key)) {
       for (const s of synonyms) {
         expanded.add(s);
       }
@@ -159,7 +184,11 @@ function scoreProduct(product: Product, query: string): number {
   let score = 0;
 
   for (const term of terms) {
-    if (title.includes(term)) score += 10;
+    if (title.includes(term)) {
+      score += 10;
+      // Extra bonus for whole-word match in title
+      if (containsWord(title, term)) score += 4;
+    }
     for (const tag of tags) {
       if (tag === term) {
         score += 8;
@@ -167,7 +196,8 @@ function scoreProduct(product: Product, query: string): number {
         score += 4;
       }
     }
-    if (productType.includes(term)) score += 4;
+    if (productType === term) score += 6;
+    else if (productType.includes(term)) score += 3;
     if (containsWord(vendor, term)) score += 2;
     if (containsWord(bodyHtml, term)) score += 1;
   }
