@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ProductCarousel, type ProductItem } from "./ProductCarousel";
 
 interface Message {
@@ -76,6 +76,44 @@ function EscalationCard() {
       </form>
     </div>
   );
+}
+
+function renderInline(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*.+?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split("\n");
+  const result: React.ReactNode[] = [];
+  let listItems: React.ReactNode[] = [];
+
+  function flushList() {
+    if (listItems.length > 0) {
+      result.push(<ul key={`ul-${result.length}`}>{listItems}</ul>);
+      listItems = [];
+    }
+  }
+
+  lines.forEach((line, i) => {
+    const listMatch = line.match(/^[*-]\s+(.*)/);
+    if (listMatch) {
+      listItems.push(<li key={i}>{renderInline(listMatch[1])}</li>);
+    } else {
+      flushList();
+      if (line.trim() !== "") {
+        result.push(<p key={i}>{renderInline(line)}</p>);
+      }
+    }
+  });
+
+  flushList();
+  return <>{result}</>;
 }
 
 function LoadingDots() {
@@ -233,13 +271,13 @@ export default function ChatWidget() {
                 className={`flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                     msg.role === "user"
-                      ? "rounded-tr-sm bg-primary text-primary-foreground"
+                      ? "rounded-tr-sm bg-primary text-primary-foreground whitespace-pre-wrap"
                       : "rounded-tl-sm bg-muted text-foreground"
                   }`}
                 >
-                  {msg.text}
+                  {msg.role === "assistant" ? renderMarkdown(msg.text) : msg.text}
                   {msg.ui?.kind === "escalation_form" && <EscalationCard />}
                   {msg.ui?.kind === "product_carousel" &&
                     msg.ui.products &&
