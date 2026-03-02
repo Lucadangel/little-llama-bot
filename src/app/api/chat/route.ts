@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { searchProducts } from "@/lib/products-search";
-import { ollamaChat, isOllamaAvailable } from "@/lib/ollama";
+import { ollamaChatStream, isOllamaAvailable } from "@/lib/ollama";
 
 const MAX_HISTORY = 10;
 
@@ -25,7 +25,7 @@ const SYSTEM_PROMPT = `You are a warm, helpful support assistant for Little Llam
 ## Your role
 1. Answer questions about shipping, returns, payments, washing & care, and sizing using ONLY the FAQ below.
 2. Help customers find products. When a customer asks to see, find, or buy a product, output ONLY this JSON on its own line (no other text on that line): {"action":"show_products","query":"<search terms>"}
-   IMPORTANT: Output the JSON as a SINGLE bare line with NO markdown, NO backticks, NO code block. Do NOT wrap it in ```json ... ``` or any other formatting. Example: {"action":"show_products","query":"alpaca cardigan"}
+   IMPORTANT: Output the JSON as a SINGLE bare line with NO markdown, NO backticks, NO code block. Do NOT wrap it in \`\`\`json ... \`\`\` or any other formatting. Example: {"action":"show_products","query":"alpaca cardigan"}
 3. If a customer wants to speak to a human, tell them to type "contact" or reach us at info@littlellama.dk or +45 30284455.
 4. For general questions about the brand, materials, or sustainability, use the brand context and FAQ below.
 5. For ANYTHING you are not sure about — do NOT guess or invent information. Say: "I'm not sure about that, but I'm happy to help with shipping, returns, care instructions, or finding products! You can also reach us at info@littlellama.dk or call +45 30284455."
@@ -138,54 +138,62 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const history: { role: string; content: string }[] = Array.isArray(
-    body.history
-  )
+  const history: { role: string; content: string }[] = Array.isArray(body.history)
     ? (body.history as { role: string; content: string }[]).slice(-MAX_HISTORY)
     : [];
 
-  const messages = [
+  const llmMessages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...history,
     { role: "user", content: message },
   ];
 
-  // Check Ollama availability; fall back gracefully if not running
   const available = await isOllamaAvailable();
   if (!available) {
     return NextResponse.json({
-      reply:
-        "The AI assistant is temporarily unavailable. Please try again later, or type 'contact' to reach our support team.",
+      reply: "The AI assistant is temporarily unavailable. Please try again later, or type 'contact' to reach our support team.",
     });
   }
 
-  const rawReply = await ollamaChat(messages);
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      let fullText = "";
 
-  // Detect product search intent from LLM output
-  const productAction = extractProductAction(rawReply);
-  if (productAction) {
-    const { query, fullMatch } = productAction;
-    const displayReply = rawReply.replace(fullMatch, "").trim();
+      const send = (event: object) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
 
-    const results = await searchProducts(query, 5);
+      try {
+        for await (const chunk of ollamaChatStream(llmMessages)) {
+          fullText += chunk;
+          send({ type: "text", chunk });
+        }
+      } catch (e) {
+        console.error("LLM streaming error:", e);
+        send({ type: "text", chunk: "\n\nSorry, something went wrong." });
+      }
 
-    if (results === null || results.length === 0) {
-      return NextResponse.json({
-        reply:
-          displayReply ||
-          "I couldn't find any products matching your request. Could you try describing what you're looking for in a different way?",
-      });
-    }
+      // Post-process: check if LLM emitted a product action
+      const productAction = extractProductAction(fullText);
+      if (productAction) {
+        const { query, fullMatch } = productAction;
+        send({ type: "replace", text: fullText.replace(fullMatch, "").trim() });
+        const results = await searchProducts(query, 5);
+        if (results && results.length > 0) {
+          send({ type: "ui", ui: { kind: "product_carousel", products: results } });
+        }
+      }
 
-    return NextResponse.json({
-      reply:
-        displayReply || "Here are some products that might interest you:",
-      ui: {
-        kind: "product_carousel",
-        products: results,
-      },
-    });
-  }
+      send({ type: "done" });
+      controller.close();
+    },
+  });
 
-  return NextResponse.json({ reply: rawReply });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
 }
