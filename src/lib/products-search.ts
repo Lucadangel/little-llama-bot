@@ -25,7 +25,9 @@ const SYNONYMS: Record<string, string[]> = {
   sweater: ["strik", "trøjer", "cardigan"],
   knitwear: ["strik", "trøjer"],
   cardigan: ["cardigan", "strik"],
-  hat: ["hue"],
+  hat: ["hue", "babyhue", "børnehue", "hatte", "hætte"],
+  cap: ["hue", "kasket"],
+  beanie: ["hue", "strikket hue"],
   mittens: ["luffer", "handsker", "vanter"],
   gloves: ["handsker", "luffer"],
   shoes: ["sko", "futter", "støvler"],
@@ -42,7 +44,16 @@ const SYNONYMS: Record<string, string[]> = {
   silk: ["silke"],
   fur: ["pels", "skind"],
   vest: ["vest", "pels vest"],
-  baby: ["baby", "babytøj"],
+  socks: ["sokker", "strømper"],
+  top: ["top", "bluse", "trøje"],
+  "t-shirt": ["t-shirt", "top", "bluse"],
+  girl: ["pige", "pigetøj", "piger"],
+  girls: ["pige", "pigetøj", "piger"],
+  boy: ["dreng", "drengetøj", "drenge"],
+  boys: ["dreng", "drengetøj", "drenge"],
+  children: ["børn", "babytøj", "børnetøj"],
+  baby: ["baby", "babytøj", "nyfødt"],
+  newborn: ["nyfødt", "baby", "0-3 måneder"],
   onesie: ["baby", "bodystocking"],
   "key ring": ["nøglering"],
   clutch: ["clutch", "taske"],
@@ -63,7 +74,9 @@ export interface ProductResult {
 const CATALOG_PATH = join(process.cwd(), "src", "lib", "products.json");
 
 function containsWord(text: string, word: string): boolean {
-  return new RegExp(`\\b${word}\\b`).test(text);
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (new RegExp(`\\b${escaped}\\b`).test(text)) return true;
+  return text.includes(word);
 }
 
 function expandQuery(query: string): string[] {
@@ -91,6 +104,7 @@ function expandQuery(query: string): string[] {
 
 function scoreProduct(product: Product, query: string): number {
   const terms = expandQuery(query);
+  const primaryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
   let score = 0;
 
   const title = (product.title ?? "").toLowerCase();
@@ -101,10 +115,23 @@ function scoreProduct(product: Product, query: string): number {
 
   for (const term of terms) {
     if (containsWord(title, term)) score += 10;
-    if (tags.some((tag) => containsWord(tag, term))) score += 5;
-    if (containsWord(productType, term)) score += 3;
+    for (const tag of tags) {
+      if (tag === term) {
+        score += 8;
+      } else if (tag.includes(term)) {
+        score += 4;
+      }
+    }
+    if (productType.includes(term)) score += 4;
     if (containsWord(vendor, term)) score += 2;
     if (containsWord(bodyHtml, term)) score += 1;
+  }
+
+  // Bonus if product_type or any tag exactly matches a primary search term
+  for (const pt of primaryTerms) {
+    if (productType === pt || tags.includes(pt)) {
+      score += 5;
+    }
   }
 
   return score;
