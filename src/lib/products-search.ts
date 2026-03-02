@@ -2,6 +2,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 
 interface ProductVariant {
+  title?: string;
   price?: string;
 }
 
@@ -51,9 +52,12 @@ const SYNONYMS: Record<string, string[]> = {
   girls: ["pige", "pigetøj", "piger"],
   boy: ["dreng", "drengetøj", "drenge"],
   boys: ["dreng", "drengetøj", "drenge"],
+  son: ["dreng", "drengetøj"],
+  daughter: ["pige", "pigetøj"],
   children: ["børn", "babytøj", "børnetøj"],
   baby: ["baby", "babytøj", "nyfødt"],
-  newborn: ["nyfødt", "baby", "0-3 måneder"],
+  newborn: ["nyfødt", "baby", "babytøj"],
+  toddler: ["børnetøj", "baby", "babytøj"],
   onesie: ["baby", "bodystocking"],
   "key ring": ["nøglering"],
   clutch: ["clutch", "taske"],
@@ -72,6 +76,19 @@ export interface ProductResult {
 }
 
 const CATALOG_PATH = join(process.cwd(), "src", "lib", "products.json");
+
+const BOY_TAGS = ["dreng", "drengetøj", "strik til dreng", "drenge sko"];
+const GIRL_TAGS = [
+  "pige",
+  "pigetøj",
+  "strik til pige",
+  "uld til piger",
+  "striksæt piger",
+  "pigesæt",
+  "baby alpaca trøje pige",
+];
+const BOY_SIGNALS = ["boy", "boys", "son", "dreng", "drengetøj"];
+const GIRL_SIGNALS = ["girl", "girls", "daughter", "pige", "pigetøj"];
 
 function containsWord(text: string, word: string): boolean {
   const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -103,9 +120,9 @@ function expandQuery(query: string): string[] {
 }
 
 function scoreProduct(product: Product, query: string): number {
+  const queryLower = query.toLowerCase();
   const terms = expandQuery(query);
-  const primaryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  let score = 0;
+  const primaryTerms = queryLower.split(/\s+/).filter(Boolean);
 
   const title = (product.title ?? "").toLowerCase();
   const productType = (product.product_type ?? "").toLowerCase();
@@ -113,8 +130,27 @@ function scoreProduct(product: Product, query: string): number {
   const tags = (product.tags ?? []).map((t) => t.toLowerCase());
   const bodyHtml = (product.body_html ?? "").toLowerCase();
 
+  // Detect gender from query
+  const queryGender = BOY_SIGNALS.some((s) => queryLower.includes(s))
+    ? "boy"
+    : GIRL_SIGNALS.some((s) => queryLower.includes(s))
+      ? "girl"
+      : null;
+
+  // Detect product gender from tags
+  const isBoyProduct = BOY_TAGS.some((bt) => tags.some((pt) => pt.includes(bt)));
+  const isGirlProduct = GIRL_TAGS.some((gt) =>
+    tags.some((pt) => pt.includes(gt))
+  );
+
+  // Gender exclusion: exclude opposite-gender-only products
+  if (queryGender === "boy" && isGirlProduct && !isBoyProduct) return 0;
+  if (queryGender === "girl" && isBoyProduct && !isGirlProduct) return 0;
+
+  let score = 0;
+
   for (const term of terms) {
-    if (containsWord(title, term)) score += 10;
+    if (title.includes(term)) score += 10;
     for (const tag of tags) {
       if (tag === term) {
         score += 8;
@@ -131,6 +167,27 @@ function scoreProduct(product: Product, query: string): number {
   for (const pt of primaryTerms) {
     if (productType === pt || tags.includes(pt)) {
       score += 5;
+    }
+  }
+
+  // Gender bonus
+  if (queryGender === "boy" && isBoyProduct) score += 8;
+  if (queryGender === "girl" && isGirlProduct) score += 8;
+
+  // Age bonus
+  if (["baby", "newborn", "infant"].some((w) => queryLower.includes(w))) {
+    if (["baby", "babytøj", "nyfødt"].some((t) => tags.some((pt) => pt.includes(t)))) {
+      score += 5;
+    }
+  }
+  if (["toddler", "2 years", "3 years", "4 years"].some((w) => queryLower.includes(w))) {
+    if (
+      tags.some((pt) => pt.includes("børnetøj")) ||
+      (product.variants ?? []).some((v) =>
+        /[234]\s*years?/.test((v.title ?? "").toLowerCase())
+      )
+    ) {
+      score += 3;
     }
   }
 
