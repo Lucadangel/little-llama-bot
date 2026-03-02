@@ -26,9 +26,10 @@ const SYSTEM_PROMPT = `You are a warm, helpful support assistant for Little Llam
 1. Answer questions about shipping, returns, payments, washing & care, and sizing using ONLY the FAQ below.
 2. Help customers find products. When a customer asks to see, find, or buy a product, output ONLY this JSON on its own line (no other text on that line): {"action":"show_products","query":"<search terms>"}
    IMPORTANT: Output the JSON as a SINGLE bare line with NO markdown, NO backticks, NO code block. Do NOT wrap it in \`\`\`json ... \`\`\` or any other formatting. Example: {"action":"show_products","query":"alpaca cardigan"}
-3. If a customer wants to speak to a human, tell them to type "contact" or reach us at info@littlellama.dk or +45 30284455.
-4. For general questions about the brand, materials, or sustainability, use the brand context and FAQ below.
-5. For ANYTHING you are not sure about — do NOT guess or invent information. Say: "I'm not sure about that, but I'm happy to help with shipping, returns, care instructions, or finding products! You can also reach us at info@littlellama.dk or call +45 30284455."
+3. If a customer wants to speak to a human, tell them to type "contact".
+4. When a customer asks "do you have X?", "X?" or any product-related question, ALWAYS output the show_products JSON action with the relevant search terms as the query.
+5. For general questions about the brand, materials, or sustainability, use the brand context and FAQ below.
+6. For ANYTHING you are not sure about — do NOT guess or invent information. Say: "I'm not sure about that, but I'm happy to help with shipping, returns, care instructions, or finding products! You can also type 'contact' to reach our team."
 
 ## STRICT RULES
 - NEVER invent specific facts (prices, policies, locations, phone numbers, emails) not present in the FAQ or brand context above.
@@ -142,14 +143,15 @@ export async function POST(req: NextRequest) {
   if (!isLikelyFaqQuestion && hasProductIntent) {
     let results = await searchProducts(message, 5);
 
-    // If no results, try a simplified query (strip modifiers, keep product type)
+    // If no results, try a simplified query (strip question framing, keep product type and descriptors)
     if (!results || results.length === 0) {
       const simplifiedQuery = message
         .toLowerCase()
         .replace(
-          /\b(small|big|little|tiny|large|boy|girl|boys|girls|baby|toddler|infant|newborn|interested in|i am|i want|i need|i'd like|i would like|show me|looking for|find me)\b/g,
+          /\b(do you have|have you got|have you|do you sell|can i get|interested in|i am|i want|i need|i'd like|i would like|show me|looking for|find me)\b/gi,
           " "
         )
+        .replace(/[?!]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
       if (simplifiedQuery.length > 1) {
@@ -158,6 +160,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (results !== null && results.length > 0) {
+      return NextResponse.json({
+        reply: "Here are some products that might interest you:",
+        ui: {
+          kind: "product_carousel",
+          products: results,
+        },
+      });
+    }
+  }
+
+  // Short-query fast-path — 1–4 word messages with no FAQ keywords are treated as product searches
+  const wordCount = msgLower.trim().split(/\s+/).length;
+  if (!isLikelyFaqQuestion && wordCount <= 4) {
+    const shortQuery = msgLower.replace(/[?!]+/g, " ").trim();
+    const results = await searchProducts(shortQuery, 5);
+    if (results && results.length > 0) {
       return NextResponse.json({
         reply: "Here are some products that might interest you:",
         ui: {
@@ -209,7 +227,17 @@ export async function POST(req: NextRequest) {
       // Post-process: check if LLM emitted a product action
       const productAction = extractProductAction(fullText);
       if (productAction) {
-        const { query, fullMatch } = productAction;
+        const { fullMatch } = productAction;
+        const strippedMessage = message
+          .toLowerCase()
+          .replace(
+            /\b(do you have|have you got|have you|do you sell|can i get|interested in|i am|i want|i need|i'd like|i would like|show me|looking for|find me)\b/gi,
+            " "
+          )
+          .replace(/[?!]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const query = productAction.query.trim() || strippedMessage || message;
         send({ type: "replace", text: fullText.replace(fullMatch, "").trim() });
         const results = await searchProducts(query, 5);
         if (results && results.length > 0) {
