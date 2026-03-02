@@ -136,7 +136,7 @@ Cashmere has a self-cleaning effect — odours disappear naturally, so you do no
 - To kill moths and insects, place the garment in a sealed freezer bag in the freezer for a day.
 
 **Pilling (lint/fluff):**
-- All cashmere knitwear pills initially, especially under the arms and where knit rubs against knit. This is normal and decreases with use and washing — high-quality cashmere consists mainly of long fibres that pill less than short fibres.
+- All cashmere knitwear pills initially, especially under the arms and where knit rubs against knit. This is normal and decreases with use and washing, as high-quality cashmere consists mainly of long fibres that pill less than short fibres.
 - Remove pills with a wool comb (pull in one direction on a flat surface), carefully by hand, or with an electric lint remover (use carefully on loosely knitted items).
 - Remove pills before washing — the garment will feel softer and fluffier after washing.
 
