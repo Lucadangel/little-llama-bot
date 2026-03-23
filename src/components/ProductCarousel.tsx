@@ -8,15 +8,18 @@ export interface ProductItem {
 }
 
 interface ProductCarouselProps {
-  products: ProductItem[];
+  products: {
+    products: ProductItem[];
+  }
 }
 
 export function ProductCarousel({ products }: ProductCarouselProps) {
   const [index, setIndex] = useState(0);
+  const _products = products.products;
 
-  if (!products || products.length === 0) return null;
+  if (!_products || _products.length === 0) return null;
 
-  const product = products[index];
+  const product = _products[index];
   const productUrl = `https://www.littlellama.dk/en-eu/products/${product.handle}`;
 
   return (
