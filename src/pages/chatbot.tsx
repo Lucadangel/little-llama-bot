@@ -17,7 +17,7 @@ const Chatbot = () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const filteredProducts = (products.products as any[]).filter((product) => 
                     product.category === 'clothes' || 
-                    product.name.toLowerCase().includes(lowerCaseInput)
+                    product.title.toLowerCase().includes(lowerCaseInput)
                 );
                 setFoundProducts(filteredProducts);
                 setMessages(prev => [...prev, { text: 'Here are some products I found:', sender: 'bot' }]);
